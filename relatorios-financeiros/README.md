@@ -60,6 +60,7 @@ SECRET_KEY=sua-chave
 ADMIN_NAME=Administrador
 ADMIN_EMAIL=admin@cetel.local
 ADMIN_PASSWORD=<senha-inicial>
+ADMIN_RESET_PASSWORD_ON_STARTUP=false
 JWT_SECRET_KEY=troque-esta-chave
 JWT_ALGORITHM=HS256
 JWT_ACCESS_TOKEN_EXPIRE_MINUTES=480
@@ -101,6 +102,7 @@ API_URL=http://backend:8000
 ADMIN_NAME=Administrador
 ADMIN_EMAIL=admin@cetel.local
 ADMIN_PASSWORD=<senha-inicial>
+ADMIN_RESET_PASSWORD_ON_STARTUP=false
 JWT_SECRET_KEY=troque-esta-chave
 JWT_ALGORITHM=HS256
 JWT_ACCESS_TOKEN_EXPIRE_MINUTES=480
@@ -235,24 +237,48 @@ Os endpoints financeiros são protegidos por JWT Bearer token. Permanecem públi
 
 ### Autenticação
 
-No primeiro start do backend, um usuário admin é criado automaticamente se
-`ADMIN_PASSWORD` estiver preenchido e ainda não existir usuário com
-`ADMIN_EMAIL`.
+No startup do backend, o projeto garante automaticamente que exista um usuário
+administrador ativo com papel `ADMIN`, usando `ADMIN_NAME`, `ADMIN_EMAIL` e
+`ADMIN_PASSWORD`. Se `ADMIN_EMAIL` ou `ADMIN_PASSWORD` estiverem vazios, nenhum
+usuário é criado e o backend registra apenas um aviso.
+
+Quando o usuário já existe, o backend reaproveita o cadastro, garante
+`is_active=true`, `is_admin=true` e associa o papel `ADMIN`. A senha não é
+sobrescrita por padrão. Para redefinir a senha no startup, use
+`ADMIN_RESET_PASSWORD_ON_STARTUP=true`.
 
 As credenciais de desenvolvimento ficam documentadas apenas em
 `backend/.env.example`.
 
-Se `ADMIN_PASSWORD` estiver vazio, o admin inicial não é criado. Em produção,
-defina uma senha forte, faça login e altere a senha diretamente na tabela
-`users` enquanto não houver tela administrativa de usuários:
+No servidor, para garantir criação ou redefinição temporária do admin, configure
+o `.env`:
 
-```sql
-UPDATE users
-SET password_hash = '<novo_hash_bcrypt>'
-WHERE email = 'admin@cetel.local';
+```env
+ADMIN_NAME=Administrador
+ADMIN_EMAIL=admin@cetel.local
+ADMIN_PASSWORD=admin123
+ADMIN_RESET_PASSWORD_ON_STARTUP=true
 ```
 
-O hash pode ser gerado com `passlib[bcrypt]`; nunca grave senha em texto puro.
+Depois rode:
+
+```bash
+git pull
+docker compose down
+docker compose up -d --build
+```
+
+Após conseguir login, por segurança altere:
+
+```env
+ADMIN_RESET_PASSWORD_ON_STARTUP=false
+```
+
+E suba novamente:
+
+```bash
+docker compose up -d --build
+```
 
 Para testar na API docs:
 

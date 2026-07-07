@@ -18,6 +18,11 @@ def hash_password(password: str) -> str:
     return pwd_context.hash(password)
 
 
+def get_password_hash(password: str) -> str:
+    """Gera hash seguro para uma senha."""
+    return hash_password(password)
+
+
 def verify_password(plain_password: str, password_hash: str) -> bool:
     """Valida uma senha contra o hash armazenado."""
     return pwd_context.verify(plain_password, password_hash)

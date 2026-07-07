@@ -25,6 +25,10 @@ class Settings:
     admin_name: str = getenv("ADMIN_NAME", "Administrador")
     admin_email: str = getenv("ADMIN_EMAIL", "admin@cetel.local")
     admin_password: str = getenv("ADMIN_PASSWORD", "")
+    admin_reset_password_on_startup: bool = (
+        getenv("ADMIN_RESET_PASSWORD_ON_STARTUP", "false").strip().lower()
+        in {"1", "true", "yes", "on"}
+    )
     jwt_secret_key: str = getenv("JWT_SECRET_KEY", getenv("SECRET_KEY", "troque-esta-chave"))
     jwt_algorithm: str = getenv("JWT_ALGORITHM", "HS256")
     jwt_access_token_expire_minutes: int = int(

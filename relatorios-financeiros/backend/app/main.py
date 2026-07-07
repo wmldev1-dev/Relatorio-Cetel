@@ -23,8 +23,7 @@ from app.core.dependencies import require_active_user
 from app.core.settings import settings
 from app.database.database import Database
 from app.schemas.common import HealthResponse
-from app.services.auth_service import AuthService
-from app.services.rbac_service import RBACService
+from app.services.seed_service import run_startup_seeds
 
 logging.basicConfig(
     level=logging.INFO,
@@ -59,18 +58,15 @@ app.include_router(users_router, dependencies=protected_dependencies)
 
 @app.on_event("startup")
 def startup() -> None:
-    """Inicializa tabelas e usuario admin inicial."""
+    """Inicializa tabelas, RBAC e usuario admin inicial."""
     if settings.jwt_secret_key == "troque-esta-chave":
         logger.warning(
             "JWT_SECRET_KEY está usando o valor padrão. Altere em produção.",
         )
-    RBACService().seed_defaults()
-    Database().ensure_user_management_columns()
-    created, message = AuthService().seed_initial_admin()
-    if created:
-        logger.info(message)
-    else:
-        logger.info(message)
+    database = Database()
+    database.init_models()
+    database.ensure_user_management_columns()
+    run_startup_seeds()
 
 
 @app.exception_handler(RequestValidationError)
