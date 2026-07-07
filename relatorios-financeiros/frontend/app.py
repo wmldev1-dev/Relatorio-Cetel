@@ -11,6 +11,8 @@ import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
+from components.auth import ensure_authenticated, render_authenticated_sidebar
+from components.permissions import can, can_any
 from components.ui import (
     apply_global_styles,
     card_grid,
@@ -37,6 +39,7 @@ from pages import (
     fornecedores,
     importacao,
     servicos,
+    usuarios,
 )
 from services.api_client import (
     APIClientError,
@@ -89,8 +92,14 @@ def main() -> None:
     )
     apply_global_styles()
 
-    pages = {
-        "ANÁLISES": [
+    if not ensure_authenticated():
+        return
+
+    render_authenticated_sidebar()
+
+    analysis_pages = []
+    if can("dashboard.view"):
+        analysis_pages.extend([
             st.Page(
                 dashboard.main,
                 title="Dashboard Executivo",
@@ -104,38 +113,56 @@ def main() -> None:
                 icon="📊",
                 url_path="dashboard-financeiro",
             ),
+        ])
+    if can("comparativo.view"):
+        analysis_pages.append(
             st.Page(
                 comparativo_mensal.main,
                 title="Comparativo Mensal",
                 icon="📈",
                 url_path="comparativo-mensal",
             ),
+        )
+    if can("fornecedores.view"):
+        analysis_pages.append(
             st.Page(
                 fornecedores.main,
                 title="Fornecedores",
                 icon="🏢",
                 url_path="fornecedores",
             ),
+        )
+    if can("servicos.view"):
+        analysis_pages.append(
             st.Page(
                 servicos.main,
                 title="Serviços",
                 icon="🧾",
                 url_path="servicos",
             ),
+        )
+    if can("dados_financeiros.view"):
+        analysis_pages.append(
             st.Page(
                 dados_financeiros.main,
                 title="Dados Financeiros",
                 icon="📋",
                 url_path="dados-financeiros",
             ),
-        ],
-        "IMPORTAÇÃO": [
+        )
+
+    import_pages = []
+    if can_any("importacao.view", "importacao.create"):
+        import_pages.append(
             st.Page(
                 importacao.main,
                 title="Importação Mensal",
                 icon="📥",
                 url_path="importacao",
             ),
+        )
+    if can("diagnostico.view"):
+        import_pages.extend([
             st.Page(
                 diagnostico_importacao.main,
                 title="Diagnóstico de Importação",
@@ -148,10 +175,78 @@ def main() -> None:
                 icon="🧭",
                 url_path="diagnostico-campos",
             ),
-        ],
-    }
+        ])
+
+    admin_pages = []
+    if can("usuarios.view"):
+        admin_pages.extend([
+            st.Page(
+                usuarios.main,
+                title="Usuários",
+                icon="👤",
+                url_path="usuarios",
+            ),
+            st.Page(
+                _placeholder_roles,
+                title="Papéis",
+                icon="🛡️",
+                url_path="papeis",
+            ),
+            st.Page(
+                _placeholder_permissions,
+                title="Permissões",
+                icon="🔐",
+                url_path="permissoes",
+            ),
+            st.Page(
+                _placeholder_audit,
+                title="Auditoria",
+                icon="🧾",
+                url_path="auditoria",
+            ),
+            st.Page(
+                _placeholder_settings,
+                title="Configurações",
+                icon="⚙️",
+                url_path="configuracoes",
+            ),
+        ])
+
+    pages = {}
+    if analysis_pages:
+        pages["ANÁLISES"] = analysis_pages
+    if import_pages:
+        pages["IMPORTAÇÃO"] = import_pages
+    if admin_pages:
+        pages["ADMINISTRAÇÃO"] = admin_pages
+    if not pages:
+        error_box("Seu usuário não possui permissão para acessar páginas do sistema.")
+        page_footer()
+        return
     pg = st.navigation(pages)
     pg.run()
+
+
+def _admin_placeholder(title: str, description: str) -> None:
+    page_title(title, description, badge="EM BREVE")
+    info_box("Módulo preparado para uma próxima sprint.")
+    page_footer("Administração CETEL")
+
+
+def _placeholder_roles() -> None:
+    _admin_placeholder("Papéis", "Gestão de papéis do sistema.")
+
+
+def _placeholder_permissions() -> None:
+    _admin_placeholder("Permissões", "Consulta de permissões disponíveis.")
+
+
+def _placeholder_audit() -> None:
+    _admin_placeholder("Auditoria", "Histórico de eventos administrativos.")
+
+
+def _placeholder_settings() -> None:
+    _admin_placeholder("Configurações", "Preferências administrativas do sistema.")
 
 
 def _render_filters(options: dict[str, list[Any]]) -> dict[str, Any]:

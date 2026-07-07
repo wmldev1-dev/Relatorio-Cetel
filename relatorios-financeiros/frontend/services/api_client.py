@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, BinaryIO
 
 import requests
+import streamlit as st
 from dotenv import load_dotenv
 
 FRONTEND_DIR = Path(__file__).resolve().parents[1]
@@ -22,9 +23,38 @@ class APIClientError(RuntimeError):
     """Erro retornado pela API."""
 
 
+class APIUnauthorizedError(APIClientError):
+    """Erro de autenticacao expirada ou ausente."""
+
+
+def login(email: str, password: str) -> dict[str, Any]:
+    """Autentica usuario na API."""
+    return _request(
+        "POST",
+        "/api/auth/login",
+        json={"email": email, "password": password},
+        authenticated=False,
+    )
+
+
+def get_me() -> dict[str, Any]:
+    """Retorna usuario autenticado."""
+    return _request("GET", "/api/auth/me")
+
+
+def get_auth_permissions() -> dict[str, Any]:
+    """Retorna papeis e permissoes do usuario autenticado."""
+    return _request("GET", "/api/auth/permissions")
+
+
+def logout() -> dict[str, Any]:
+    """Executa logout logico."""
+    return _request("POST", "/api/auth/logout", authenticated=False)
+
+
 def testar_conexao() -> dict[str, Any]:
     """Testa a saude da API."""
-    return _request("GET", "/api/health")
+    return _request("GET", "/api/health", authenticated=False)
 
 
 def listar_importacoes() -> list[dict[str, Any]]:
@@ -139,6 +169,41 @@ def listar_usuarios() -> list[str]:
     return _request("GET", "/api/usuarios")
 
 
+def admin_listar_usuarios(params: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Lista usuarios do painel administrativo."""
+    clean_params = {
+        key: value
+        for key, value in (params or {}).items()
+        if value not in (None, "", "Todos", "Todas")
+    }
+    return _request("GET", "/api/users", params=clean_params)
+
+
+def admin_obter_usuario(user_id: int) -> dict[str, Any]:
+    """Busca usuario administrativo."""
+    return _request("GET", f"/api/users/{user_id}")
+
+
+def admin_criar_usuario(payload: dict[str, Any]) -> dict[str, Any]:
+    """Cria usuario administrativo."""
+    return _request("POST", "/api/users", json=payload)
+
+
+def admin_atualizar_usuario(user_id: int, payload: dict[str, Any]) -> dict[str, Any]:
+    """Atualiza usuario administrativo."""
+    return _request("PUT", f"/api/users/{user_id}", json=payload)
+
+
+def admin_alterar_senha_usuario(user_id: int, senha: str) -> dict[str, Any]:
+    """Altera senha de usuario administrativo."""
+    return _request("PATCH", f"/api/users/{user_id}/password", json={"senha": senha})
+
+
+def admin_excluir_usuario(user_id: int) -> dict[str, Any]:
+    """Exclui logicamente usuario administrativo."""
+    return _request("DELETE", f"/api/users/{user_id}")
+
+
 def obter_diagnostico_importacao(import_batch_id: int) -> dict[str, Any]:
     """Retorna diagnostico de uma importacao."""
     return _request("GET", f"/api/diagnostico/importacoes/{import_batch_id}")
@@ -192,19 +257,32 @@ def get_relatorio_servicos(
     return _request("GET", "/api/relatorios/servicos", params=params)
 
 
-def _request(method: str, path: str, **kwargs: Any) -> Any:
+def _request(method: str, path: str, authenticated: bool = True, **kwargs: Any) -> Any:
     """Executa requisicao HTTP e normaliza erros."""
+    headers = dict(kwargs.pop("headers", {}) or {})
+    if authenticated:
+        token = st.session_state.get("access_token")
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
     try:
         response = requests.request(
             method,
             f"{API_URL}{path}",
             timeout=TIMEOUT,
+            headers=headers,
             **kwargs,
         )
         response.raise_for_status()
         return response.json()
     except requests.HTTPError as error:
         detail = _extract_error(response)
+        if response.status_code == 401:
+            _clear_auth_session()
+            raise APIUnauthorizedError(
+                detail or "Sessão expirada. Faça login novamente.",
+            ) from error
+        if response.status_code == 403:
+            raise APIClientError(detail or "Acesso negado para esta operação.") from error
         raise APIClientError(detail) from error
     except requests.RequestException as error:
         raise APIClientError(f"Erro ao comunicar com a API: {error}") from error
@@ -221,3 +299,9 @@ def _extract_error(response: requests.Response) -> str:
     if isinstance(detail, str):
         return detail
     return str(detail or "Erro inesperado na API.")
+
+
+def _clear_auth_session() -> None:
+    """Remove dados locais de autenticacao."""
+    for key in ("access_token", "token_type", "user", "roles", "permissions"):
+        st.session_state.pop(key, None)

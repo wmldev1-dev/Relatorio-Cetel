@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
+from app.core.permissions import require_permission
 from app.schemas.relatorios import RelatorioFornecedorItem, RelatorioServicoItem
 from app.services.relatorio_fornecedor_service import RelatorioFornecedorService
 from app.services.relatorio_servico_service import RelatorioServicoService
@@ -11,7 +12,11 @@ from app.services.relatorio_servico_service import RelatorioServicoService
 router = APIRouter(prefix="/api/relatorios", tags=["relatorios"])
 
 
-@router.get("/fornecedores", response_model=list[RelatorioFornecedorItem])
+@router.get(
+    "/fornecedores",
+    response_model=list[RelatorioFornecedorItem],
+    dependencies=[Depends(require_permission("fornecedores.view"))],
+)
 def listar_relatorio_fornecedores(
     competencia: str,
     fornecedor: str | None = None,
@@ -28,7 +33,11 @@ def listar_relatorio_fornecedores(
         raise HTTPException(status_code=422, detail=str(error)) from error
 
 
-@router.get("/servicos", response_model=list[RelatorioServicoItem])
+@router.get(
+    "/servicos",
+    response_model=list[RelatorioServicoItem],
+    dependencies=[Depends(require_permission("servicos.view"))],
+)
 def listar_relatorio_servicos(
     competencia: str,
     servico: str | None = None,

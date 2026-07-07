@@ -10,6 +10,7 @@ from typing import Any
 import pandas as pd
 import streamlit as st
 
+from components.permissions import can
 from components.charts import (
     executive_city_bar,
     executive_comparison_columns,
@@ -337,7 +338,7 @@ def _render_insights(insights: list[dict[str, Any]]) -> None:
 
 def _render_exports(dashboard: dict[str, Any]) -> None:
     """Renderiza acoes extras de exportacao."""
-    if st.session_state.get("exec_presentation_active"):
+    if st.session_state.get("exec_presentation_active") or not can("dashboard.export"):
         return
     section_title("Exportação", "Arquivos gerados a partir dos dados exibidos nesta tela.")
     st.download_button(

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from sqlalchemy import Engine, create_engine, text
+from sqlalchemy import Engine, create_engine, inspect, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
@@ -54,9 +54,39 @@ class Database:
 
     def init_models(self) -> None:
         """Cria as tabelas da aplicacao, se necessario."""
-        from app.models import Competence, FinancialEntry, ImportBatch  # noqa: F401
+        from app.models import (  # noqa: F401
+            Competence,
+            FinancialEntry,
+            ImportBatch,
+            Permission,
+            Role,
+            RolePermission,
+            User,
+            UserAuditLog,
+            UserRole,
+        )
 
         Base.metadata.create_all(self.get_engine())
+
+    def ensure_user_management_columns(self) -> None:
+        """Adiciona colunas administrativas em bases existentes."""
+        engine = self.get_engine()
+        inspector = inspect(engine)
+        existing = {column["name"] for column in inspector.get_columns("users")}
+        columns = {
+            "last_login_at": "DATETIME NULL",
+            "created_by_id": "INT NULL",
+            "updated_by_id": "INT NULL",
+            "failed_login_attempts": "INT NOT NULL DEFAULT 0",
+            "first_failed_login_at": "DATETIME NULL",
+            "locked_until": "DATETIME NULL",
+        }
+        with engine.begin() as connection:
+            for column_name, definition in columns.items():
+                if column_name not in existing:
+                    connection.execute(
+                        text(f"ALTER TABLE users ADD COLUMN {column_name} {definition}"),
+                    )
 
     def test_connection(self) -> tuple[bool, str]:
         """Testa a conexao com o banco de dados."""

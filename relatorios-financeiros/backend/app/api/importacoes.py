@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 
+from app.core.permissions import require_permission
 from app.schemas.common import MessageResponse
 from app.schemas.importacao import ImportacaoCreateResponse, ImportacaoResponse
 from app.services.import_processor_service import ImportProcessorService
@@ -13,13 +14,22 @@ from app.utils.upload import NamedBytesIO
 router = APIRouter(prefix="/api/importacoes", tags=["importacoes"])
 
 
-@router.get("", response_model=list[ImportacaoResponse])
+@router.get(
+    "",
+    response_model=list[ImportacaoResponse],
+    dependencies=[Depends(require_permission("importacao.view"))],
+)
 def listar_importacoes() -> list[dict[str, str]]:
     """Lista importacoes registradas."""
     return ImportService().list_imports()
 
 
-@router.post("", response_model=ImportacaoCreateResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=ImportacaoCreateResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_permission("importacao.create"))],
+)
 async def criar_importacao(
     competencia: str = Form(...),
     arquivo: UploadFile = File(...),
@@ -40,7 +50,11 @@ async def criar_importacao(
     )
 
 
-@router.get("/{import_batch_id}", response_model=ImportacaoResponse)
+@router.get(
+    "/{import_batch_id}",
+    response_model=ImportacaoResponse,
+    dependencies=[Depends(require_permission("importacao.view"))],
+)
 def buscar_importacao(import_batch_id: int) -> dict[str, str]:
     """Busca uma importacao pelo identificador."""
     try:
@@ -49,7 +63,11 @@ def buscar_importacao(import_batch_id: int) -> dict[str, str]:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
 
 
-@router.post("/{import_batch_id}/processar", response_model=MessageResponse)
+@router.post(
+    "/{import_batch_id}/processar",
+    response_model=MessageResponse,
+    dependencies=[Depends(require_permission("importacao.create"))],
+)
 def processar_importacao(import_batch_id: int) -> MessageResponse:
     """Processa uma importacao registrada."""
     success, message = ImportProcessorService().process_import(import_batch_id)
@@ -59,7 +77,11 @@ def processar_importacao(import_batch_id: int) -> MessageResponse:
     return MessageResponse(success=success, message=message)
 
 
-@router.post("/{import_batch_id}/reprocessar", response_model=MessageResponse)
+@router.post(
+    "/{import_batch_id}/reprocessar",
+    response_model=MessageResponse,
+    dependencies=[Depends(require_permission("importacao.update"))],
+)
 def reprocessar_importacao(import_batch_id: int) -> MessageResponse:
     """Reprocessa uma importacao apagando e recriando seus lancamentos."""
     success, message = ImportProcessorService().reprocess_import(import_batch_id)
@@ -69,7 +91,11 @@ def reprocessar_importacao(import_batch_id: int) -> MessageResponse:
     return MessageResponse(success=success, message=message)
 
 
-@router.delete("/{import_batch_id}", response_model=MessageResponse)
+@router.delete(
+    "/{import_batch_id}",
+    response_model=MessageResponse,
+    dependencies=[Depends(require_permission("importacao.delete"))],
+)
 def remover_importacao(import_batch_id: int) -> MessageResponse:
     """Remove uma importacao e seus lancamentos financeiros."""
     try:

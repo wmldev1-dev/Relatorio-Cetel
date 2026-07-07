@@ -2,15 +2,20 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
+from app.core.permissions import require_permission
 from app.schemas.comparativo import ComparativoMensalResponse
 from app.services.comparativo_service import ComparativoService
 
 router = APIRouter(prefix="/api/comparativo", tags=["comparativo"])
 
 
-@router.get("/mensal", response_model=ComparativoMensalResponse)
+@router.get(
+    "/mensal",
+    response_model=ComparativoMensalResponse,
+    dependencies=[Depends(require_permission("comparativo.view"))],
+)
 def obter_comparativo_mensal(
     competencia_base: str,
     competencia_comparacao: str,

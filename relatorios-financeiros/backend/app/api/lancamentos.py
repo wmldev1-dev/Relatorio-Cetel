@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 
+from app.core.permissions import require_permission
 from app.schemas.financeiro import (
     CompetenciaOption,
     CompetenciaOverview,
@@ -15,7 +16,11 @@ from app.services.financial_entry_service import FinancialEntryService
 router = APIRouter(prefix="/api/lancamentos", tags=["lancamentos"])
 
 
-@router.get("", response_model=list[LancamentoResponse])
+@router.get(
+    "",
+    response_model=list[LancamentoResponse],
+    dependencies=[Depends(require_permission("dados_financeiros.view"))],
+)
 def listar_lancamentos(
     limit: int = Query(default=500, ge=1, le=10000),
     offset: int = Query(default=0, ge=0),
@@ -24,7 +29,11 @@ def listar_lancamentos(
     return FinancialEntryService().list_entries(limit=limit, offset=offset)
 
 
-@router.get("/paginado", response_model=LancamentosPaginados)
+@router.get(
+    "/paginado",
+    response_model=LancamentosPaginados,
+    dependencies=[Depends(require_permission("dados_financeiros.view"))],
+)
 def listar_lancamentos_paginados(
     limit: int = Query(default=100, ge=1, le=1000),
     offset: int = Query(default=0, ge=0),
@@ -36,7 +45,11 @@ def listar_lancamentos_paginados(
     )
 
 
-@router.get("/competencias", response_model=list[CompetenciaOption])
+@router.get(
+    "/competencias",
+    response_model=list[CompetenciaOption],
+    dependencies=[Depends(require_permission("dados_financeiros.view"))],
+)
 def listar_competencias() -> list[CompetenciaOption]:
     """Lista competencias disponiveis."""
     options = FinancialEntryService().get_competence_options()
@@ -46,7 +59,11 @@ def listar_competencias() -> list[CompetenciaOption]:
     ]
 
 
-@router.get("/competencias/{competence_id}", response_model=CompetenciaOverview)
+@router.get(
+    "/competencias/{competence_id}",
+    response_model=CompetenciaOverview,
+    dependencies=[Depends(require_permission("dados_financeiros.view"))],
+)
 def obter_competencia(competence_id: int) -> dict[str, object]:
     """Retorna resumo e lancamentos de uma competencia."""
     return FinancialEntryService().get_competence_overview(competence_id)

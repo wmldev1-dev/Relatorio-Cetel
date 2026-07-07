@@ -22,6 +22,14 @@ class Settings:
 
     database_url: str = getenv("DATABASE_URL", "")
     secret_key: str = getenv("SECRET_KEY", "change-me")
+    admin_name: str = getenv("ADMIN_NAME", "Administrador")
+    admin_email: str = getenv("ADMIN_EMAIL", "admin@cetel.local")
+    admin_password: str = getenv("ADMIN_PASSWORD", "")
+    jwt_secret_key: str = getenv("JWT_SECRET_KEY", getenv("SECRET_KEY", "troque-esta-chave"))
+    jwt_algorithm: str = getenv("JWT_ALGORITHM", "HS256")
+    jwt_access_token_expire_minutes: int = int(
+        getenv("JWT_ACCESS_TOKEN_EXPIRE_MINUTES", "480"),
+    )
     pool_size: int = int(getenv("DB_POOL_SIZE", "5"))
     max_overflow: int = int(getenv("DB_MAX_OVERFLOW", "10"))
     pool_recycle: int = int(getenv("DB_POOL_RECYCLE", "3600"))

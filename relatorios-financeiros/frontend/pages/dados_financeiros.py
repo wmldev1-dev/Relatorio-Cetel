@@ -7,6 +7,7 @@ from decimal import Decimal
 import pandas as pd
 import streamlit as st
 
+from components.permissions import can
 from components.ui import (
     action_buttons,
     error_box,
@@ -111,7 +112,7 @@ def main() -> None:
             entries_frame = pd.DataFrame(entries)
             suppliers = ["Todos"] + listar_fornecedores()
             categories = ["Todas"] + listar_categorias()
-            users = ["Todos"] + listar_usuarios()
+            users = ["Todos"] + listar_usuarios() if can("usuarios.view") else ["Todos"]
 
             with st.container(border=True):
                 section_title("Filtros avançados", "Refine a competência por fornecedor, categoria e usuário.")
@@ -128,12 +129,14 @@ def main() -> None:
                     help="Mostra somente lançamentos da categoria selecionada.",
                     key="financial_category",
                 )
-                selected_user = filter_user.selectbox(
-                    "Usuário",
-                    options=users,
-                    help="Mostra somente lançamentos do usuário selecionado.",
-                    key="financial_user",
-                )
+                selected_user = "Todos"
+                if can("usuarios.view"):
+                    selected_user = filter_user.selectbox(
+                        "Usuário",
+                        options=users,
+                        help="Mostra somente lançamentos do usuário selecionado.",
+                        key="financial_user",
+                    )
                 refresh_clicked, clear_clicked = action_buttons(
                     primary_key="financial_advanced_refresh_button",
                     secondary_key="financial_advanced_clear_button",

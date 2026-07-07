@@ -6,8 +6,9 @@ from datetime import date
 from decimal import Decimal
 from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
+from app.core.permissions import require_permission
 from app.schemas.financeiro import DashboardResponse
 from app.services.dashboard_service import DashboardService
 from app.services.financial_entry_service import FinancialEntryService
@@ -15,13 +16,21 @@ from app.services.financial_entry_service import FinancialEntryService
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
 
-@router.get("", response_model=DashboardResponse)
+@router.get(
+    "",
+    response_model=DashboardResponse,
+    dependencies=[Depends(require_permission("dashboard.view"))],
+)
 def listar_dashboard() -> dict[str, object]:
     """Retorna indicadores consolidados."""
     return FinancialEntryService().get_dashboard()
 
 
-@router.get("/financeiro", response_model=dict[str, Any])
+@router.get(
+    "/financeiro",
+    response_model=dict[str, Any],
+    dependencies=[Depends(require_permission("dashboard.view"))],
+)
 def listar_dashboard_financeiro(
     competence_id: int | None = None,
     fornecedor: str | None = None,
@@ -45,7 +54,11 @@ def listar_dashboard_financeiro(
     )
 
 
-@router.get("/executivo", response_model=dict[str, Any])
+@router.get(
+    "/executivo",
+    response_model=dict[str, Any],
+    dependencies=[Depends(require_permission("dashboard.view"))],
+)
 def listar_dashboard_executivo(
     competencia: str | None = None,
     fornecedor: str | None = None,

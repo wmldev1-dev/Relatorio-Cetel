@@ -5,6 +5,7 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
+from components.permissions import can
 from components.ui import (
     action_buttons,
     danger_button,
@@ -36,21 +37,27 @@ def main() -> None:
         "Registre e acompanhe os lotes mensais de importação SQL.",
     )
 
-    with st.container(border=True):
-        section_title("1. Novo lote", "Informe a competência e envie o arquivo da importação mensal.")
-        with st.form("monthly_import_form", clear_on_submit=False):
-            competence = st.text_input(
-                "Competência",
-                placeholder="YYYY-MM",
-                help="Informe a competência mensal no formato YYYY-MM.",
-            )
-            uploaded_file = st.file_uploader(
-                "Arquivo SQL ou bruto",
-                type=None,
-                accept_multiple_files=False,
-                help="Envie um arquivo .sql ou texto bruto tabulado da competência informada.",
-            )
-            submitted = st.form_submit_button("REGISTRAR IMPORTAÇÃO", type="primary")
+    submitted = False
+    competence = ""
+    uploaded_file = None
+    if can("importacao.create"):
+        with st.container(border=True):
+            section_title("1. Novo lote", "Informe a competência e envie o arquivo da importação mensal.")
+            with st.form("monthly_import_form", clear_on_submit=False):
+                competence = st.text_input(
+                    "Competência",
+                    placeholder="YYYY-MM",
+                    help="Informe a competência mensal no formato YYYY-MM.",
+                )
+                uploaded_file = st.file_uploader(
+                    "Arquivo SQL ou bruto",
+                    type=None,
+                    accept_multiple_files=False,
+                    help="Envie um arquivo .sql ou texto bruto tabulado da competência informada.",
+                )
+                submitted = st.form_submit_button("REGISTRAR IMPORTAÇÃO", type="primary")
+    else:
+        info_box("Você possui acesso somente para consulta das importações.")
 
     if submitted:
         try:
@@ -61,7 +68,7 @@ def main() -> None:
             error_box(str(error))
 
     last_import_batch_id = st.session_state.get("last_import_batch_id")
-    if last_import_batch_id:
+    if last_import_batch_id and can("importacao.create"):
         info_box(
             f"Importação {last_import_batch_id} registrada "
             "e pronta para processamento.",
@@ -83,7 +90,7 @@ def main() -> None:
                 item for item in imports
                 if item["status"] == STATUS_PENDING
             ]
-            if pending_imports:
+            if pending_imports and can("importacao.create"):
                 options = {
                     (
                         f"{item['id_importacao']} - {item['competencia']} - "
@@ -117,7 +124,8 @@ def main() -> None:
                     if refresh_clicked:
                         st.rerun()
 
-            _render_remove_import(imports)
+            if can("importacao.delete"):
+                _render_remove_import(imports)
             imports_frame = pd.DataFrame(imports)
             render_table(
                 imports_frame,

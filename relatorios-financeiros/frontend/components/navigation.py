@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import streamlit as st
 
-from components.ui import apply_global_styles
+from components.ui import app_header, apply_global_styles
 
 
 def render_sidebar(active_page: str | None = None) -> None:
     """Aplica estilos e exibe uma marca discreta quando chamado por codigo legado."""
     apply_global_styles()
     with st.sidebar:
-        st.caption("CETEL • Relatórios Financeiros")
+        app_header(st.session_state.get("user"))
